@@ -41,6 +41,8 @@ create_codebook <- function(.df,stats = list(mean=mean,sd=sd,min=min,max=max,
 
 
 winsorize <- function(x, lower = 0.05, upper = 0.95){
+  box::use(r/core[...]) 
+  box::use(dplyr[case_when]) 
   
   # remove outliers
   # I didn't want to include a whole library just for this.
