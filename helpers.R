@@ -1,5 +1,5 @@
 # add options('box.path' = "C:/Users/leuve002/git/") to ~/.Rprofile and
-# call this file with: box::use(box_modules/helper_functions[create_codebook])
+# call this file with: box::use(box_modules/helpers)
 
 create_codebook <- function(.df,stats = list(mean=mean,sd=sd,min=min,max=max,
                                              prop_miss=prop_miss)) {
