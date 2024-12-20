@@ -1,6 +1,12 @@
 # add options('box.path' = "C:/path/to/parent/") to ~/.Rprofile and
 # call this file with: box::use(box_modules/utils)
 
+prop_miss <- function(x,na.rm = TRUE) {
+  box::use(r/core[...])  
+  mean(is.na(x))
+}
+
+
 create_codebook <- function(.df,stats = list(mean=mean,sd=sd,min=min,max=max,
                                              prop_miss=prop_miss)) {
   
@@ -19,9 +25,7 @@ create_codebook <- function(.df,stats = list(mean=mean,sd=sd,min=min,max=max,
                    type = map_chr(.df, typeof))
   
   
-  prop_miss <- function(x,na.rm = TRUE) {
-    mean(is.na(x))
-  }
+
   
   stats_to_tibble <- function(var,stats) {
     map_dbl(stats,~ifelse(is.numeric(var),.x(var,na.rm = TRUE),NA)) %>%
@@ -47,8 +51,8 @@ winsorize <- function(x, lower = 0.05, upper = 0.95){
   # remove outliers
   # I didn't want to include a whole library just for this.
   
-  lower_bound <- quantile(x, lower)  # 5th percentile
-  upper_bound <- quantile(x, upper)  # 95th percentile
+  lower_bound <- quantile(x, lower, na.rm = TRUE)  # 5th percentile
+  upper_bound <- quantile(x, upper, na.rm = TRUE)  # 95th percentile
   
   #Winsorize: Replace values outside the bounds with the respective bounds
   case_when(
