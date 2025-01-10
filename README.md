@@ -24,4 +24,4 @@ so for example to winsorize a variable use `mutate(var = utils$winsorize(var)`
    - count_label: adds counts to the labels of factors, useful for some plots
 - plots.R: plots:
   - stacked_bar_plot: a stacked bar chart.
-  - stacked_bar_plot_wur: the same, but in WUR housestyle. Requires the `[ggthemwure](https://git.wur.nl/wmrkdown/ggthemewur)` package.
+  - stacked_bar_plot_wur: the same, but in WUR housestyle. Requires the `[ggthemwur](https://git.wur.nl/wmrkdown/ggthemewur)` package.
