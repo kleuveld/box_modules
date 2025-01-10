@@ -1,6 +1,6 @@
 # Introduction
 
-[This repo](https://github.com/kleuveld/box_modules) contains three R scripts with helper functions, utils.R, plots.R and esitmators.R (see function index).
+[This repo](https://github.com/kleuveld/box_modules) contains two R scripts with helper functions, utils.R and plots.R and (see function index).
 These scripts can be called using the `[box](https://github.com/klmr/box)` package, 
 in effect working just like a 
 
@@ -24,4 +24,5 @@ so for example to winsorize a variable use `mutate(var = utils$winsorize(var)`
    - count_label: adds counts to the labels of factors, useful for some plots
 - plots.R: plots:
   - stacked_bar_plot: a stacked bar chart.
-  - stacked_bar_plot_wur: the same, but in WUR housestyle. Requires the `[ggthemwur](https://git.wur.nl/wmrkdown/ggthemewur)` package.
+  - stacked_bar_plot_wur: the same, but in WUR housestyle. Requires the `[ggthemewur](https://git.wur.nl/wmrkdown/ggthemewur)` package.
+
