@@ -91,3 +91,33 @@ count_label <- function(vector, prefix = "\nn=", suffix = "") {
                pull(value, name = newlabel))
   
 }
+
+
+truncate_to_mean <- function(x,min = NULL,max = NULL) {
+  box::use(r/core[...]) 
+  box::use(dplyr[if_else]) 
+  
+  
+  mean = mean(x,na.rm = TRUE)
+  
+  if (!is.null(min)){
+    while (min(x,na.rm = TRUE) < min) {
+      if (mean(x,na.rm = TRUE) <= min) {
+        cat("The mean is smaller than the supplied min, exiting\n")
+        break
+      }
+      x <- if_else(x > min, x, mean - (min - x))
+    }
+  }
+  
+  if (!is.null(max)){
+    while (max(x,na.rm = TRUE) > max) {
+      if (mean(x,na.rm = TRUE) >= max) {
+        cat("The mean is larger than the supplied max, exiting\n")
+        break
+      }
+      x <- if_else(x < max, x, mean + (x - max))
+    }
+  }
+  x
+}
