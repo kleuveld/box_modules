@@ -91,3 +91,49 @@ count_label <- function(vector, prefix = "\nn=", suffix = "") {
                pull(value, name = newlabel))
   
 }
+
+
+truncate_sample <- function(x, min = NULL, max = NULL, group = 1) {
+    # replace high and/or low values by resampling from existing distribution
+
+    # takes four vectors:
+    # x - values to truncate
+    # min (optional) - lower bound to truncate
+    # max (optional) - upper bound to truncate
+    # group (optional) - groups from within which to replace
+
+
+    box::use(r/core[...]) 
+    box::use(dplyr[...]) 
+
+    # if min is null, just set it to the existing minimum,
+    # so it doesn't do anything
+    if (is.null(min)) {
+      min <- min(x, na.rm = TRUE)
+    }
+
+    # same for max
+    if (is.null(max)) {
+      min <- max(x, na.rm = TRUE)
+    }
+
+    # get a return value
+    return <- 
+      # it works best in a grouped data frame
+      bind_cols(x = x, min = min, max = max, group = group) %>%
+        group_by(group) %>%
+        mutate(x = ifelse(x > min, x, NA)) %>%
+        mutate(x = ifelse(x < max, x, NA)) %>%
+        mutate(
+          x = ifelse(
+            is.na(x), 
+            sample(x[!is.na(x)], sum(is.na(x)), replace = TRUE),
+            x)
+        ) %>%
+      ungroup() %>%
+      pull(x)
+
+    # reset original NAs to NA
+    return[is.na(x)] <- NA
+    return
+ }
