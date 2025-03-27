@@ -137,3 +137,14 @@ truncate_sample <- function(x, min = NULL, max = NULL, group = 1) {
     return[is.na(x)] <- NA
     return
  }
+
+
+ isid <- function(vec) {
+
+    box::use(r/core[...]) 
+
+    if (length(unique(vec)) != length(vec)) {
+      stop("not a valid id")
+    }
+
+}
