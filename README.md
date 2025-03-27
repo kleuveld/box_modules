@@ -22,6 +22,11 @@ so for example to winsorize a variable use `mutate(var = utils$winsorize(var)`
    - create_codebook: creates a "codebook"-dataframe containing variable labels and summ stats of data frame.
    - winsorize: winsorize a vector
    - count_label: adds counts to the labels of factors, useful for some plots
+   - truncate_sample: truncates a vector by resampling out-of-bounds observations
+   from within-bounds observations. Useful for generating fake data.
+   - isid: checks if a vector has duplicates, and stops executing scripts if
+   it does.
+   Useful after generating ID codes to ensure they are valid.
 - plots.R: plots:
   - stacked_bar_plot: a stacked bar chart.
   - stacked_bar_plot_wur: the same, but in WUR housestyle. Requires the `[ggthemewur](https://git.wur.nl/wmrkdown/ggthemewur)` package.
