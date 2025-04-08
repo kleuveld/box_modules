@@ -139,12 +139,34 @@ truncate_sample <- function(x, min = NULL, max = NULL, group = 1) {
  }
 
 
- isid <- function(vec) {
+ isid <- function(df, ...) {
+
+  # takes data frame and variables
+  # stops execution if the supplied varaibles do not uniquely identify observations
+  # returns data frame if they do, so that the fucntion can be used in a
+  # dplyr pipeline
 
     box::use(r/core[...]) 
+    box::use(dplyr[`%>%`,distinct])
+    # if (length(unique(vec)) != length(vec)) {
+    #   stop("not a valid id")
+    # }
 
-    if (length(unique(vec)) != length(vec)) {
-      stop("not a valid id")
+    total_rows <- 
+      df %>% 
+      distinct(...) %>%  
+      nrow()
+
+    unique_rows <- nrow(df)
+
+
+    if (total_rows != unique_rows) {
+      stop("isid encountered duplicate values for the variable(s) supplied", 
+           call. = FALSE)
+    } else {
+      return(df)
     }
+
+
 
 }
