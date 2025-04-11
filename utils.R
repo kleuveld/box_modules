@@ -170,3 +170,57 @@ truncate_sample <- function(x, min = NULL, max = NULL, group = 1) {
 
 
 }
+
+
+
+
+##########################
+## Flextable Extensions ##
+##########################
+
+colourer <- function(domain, palette = c("transparent", "red")){
+
+  box::use(r/core[...]) 
+  box::use(scales[col_numeric])
+
+  # this exapnds the colourer function in the helpfule for flextable::bg
+  # the colourer function there had a hard-coded domain and palette,
+  # this function returns a colourer function with the domain and palette
+  # you supply, eg:
+  # bg(ft_2, bg = colourer(0,5), part = "body")
+
+  col_numeric(
+    palette = palette,
+    na.color = "transparent",
+    domain = domain
+  )
+}
+
+conditional_format <- function(x, .cols,
+                               palette = NULL){
+  # function to dynamically format a flextable, by
+  # putting the min and max values in the domain for the colourer function
+
+  box::use(r/core[...]) 
+  box::use(dplyr[...])
+  box::use(tibble[...])
+  box::use(flextable[...])
+
+
+  # get the underlying data
+  df <- as_tibble(x$body$dataset)
+
+  for (colname in .cols) {
+
+    j <- as.formula(paste0("~`",colname,"`"))
+    domain <- c(min(df[[colname]],na.rm = TRUE),
+                max(df[[colname]],na.rm = TRUE))
+
+    # update the flextable object
+    x <-
+      x %>%
+      bg(j = j, bg = colourer(domain = domain, palette = palette), part = "body")
+  }
+
+  x
+}

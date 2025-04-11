@@ -34,6 +34,11 @@ Better documentation may be coming.
    - isid: checks if a data frame is uniquely identified by the variables 
    supplied, and stops executing scripts if it is not.
    Useful after generating ID codes to ensure they are valid.
+   - colourer: for generating a function that can be used in flextable::bg(),
+   based on a domain and palette supplied as arguments:
+   Example use: `bg(ft_2, bg = utils$colourer(domain = c(0,5), palette = c("transparent","red), part = "body")`
+   - conditional_format: for colouring flextable columns, based on actual data.
+   Example use: `utils$conditional_format(ft_2, .cols = c("var1"."var2"), palette = c("red","transparent","red"))`
 - plots.R: plots:
   - stacked_bar_plot: a stacked bar chart.
   - stacked_bar_plot_wur: the same, but in WUR housestyle. Requires the `[ggthemewur](https://git.wur.nl/wmrkdown/ggthemewur)` package.
