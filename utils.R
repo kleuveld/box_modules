@@ -224,3 +224,55 @@ conditional_format <- function(x, .cols,
 
   x
 }
+
+
+
+generate_ids <- function(df, ...) {
+  # function to generate id based on variables.
+
+
+  box::use(r/core[...]) 
+  box::use(dplyr[...])
+ # box::use(tibble[...])
+  box::use(rlang[...])
+
+  
+  # we need to capture the variables as quosures
+  vars <- quos(...)
+
+  # initialize the .by variable, which governs nesting
+  .by = NULL
+
+  for (var  in vars ) {
+    
+    # create a name from the variable quosure
+    .name <- paste0(as_name(enquo(var)),"_id")
+
+    levels <- 
+      df %>% 
+      distinct( {{.by }}, {{ var }} ) %>%
+      {
+        enquo(.by)
+        # if by is null...
+        if (quo_is_null(enquo(.by))) {
+          # just the rownumber
+          {.} %>%
+          mutate( "{.name}" := paste0(row_number()))
+        } else {
+          # .. else the previous id, with the rownumber appended.
+          {.} %>% 
+          mutate( "{.name}" := paste0({{.by}}, "-",row_number()),.by = {{.by}})
+        }
+      }
+
+    df <-
+      df %>% 
+      left_join(levels)
+
+    # update .by variable for the next iteration
+    .by <- new_quosure(parse_expr(.name))
+  }
+  df
+}
+
+
