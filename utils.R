@@ -233,32 +233,24 @@ generate_ids <- function(df, ..., .by = NULL) {
 
   box::use(r/core[...]) 
   box::use(dplyr[...])
- # box::use(tibble[...])
   box::use(rlang[...])
-
-
 
   # Capture the dots
   dots <- enquos(...)
   
-  # Remove .by from dots if someone passed it there (though if you have .by in the signature, most people shouldn't)
+  # Remove .by from dots
   vars <- dots[names(dots) != ".by"]
   
   # Capture the .by argument
   #by_quo <- enquo(.by)
   .by = enquo(.by)
 
-  
-  # we need to capture the variables as quosures
-  #vars <- quos(...)
-
-  # initialize the .by variable, which governs nesting
-  #.by = NULL
 
   for (var  in vars ) {
     
-    # create a name from the variable quosure
-    .name <- paste0(as_name(enquo(var)),"_id")
+    # create a name for the new ID varaible, from the variable quosure
+    .level_id <- new_quosure(parse_expr(paste0(as_name(as_label(var)),"_id")))
+
 
     levels <- 
       df %>% 
@@ -269,20 +261,25 @@ generate_ids <- function(df, ..., .by = NULL) {
         if (quo_is_null(enquo(.by))) {
           # just the rownumber
           {.} %>%
-          mutate( "{.name}" := paste0(row_number()))
+          mutate( {{ .level_id }}:= paste0(row_number()))
         } else {
           # .. else the previous id, with the rownumber appended.
           {.} %>% 
-          mutate( "{.name}" := paste0({{.by}}, "-",row_number()),.by = {{.by}})
+          mutate( {{ .level_id }} := paste0({{.by}}, "-",row_number()),.by = {{.by}})
         }
       }
 
-    df <-
-      df %>% 
-      left_join(levels)
+    # merge in the leves, suppressing the annoying join by message
+    suppressMessages(
+      df <-
+        df %>% 
+        left_join(levels) %>%
+        relocate({{ .level_id }}, .before = {{ var }})
+    )
 
-    # update .by variable for the next iteration
-    .by <- new_quosure(parse_expr(.name))
+    # update the by for the next iteration
+    .by <- .level_id
+
   }
   df
 }
