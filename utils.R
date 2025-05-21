@@ -227,7 +227,7 @@ conditional_format <- function(x, .cols,
 
 
 
-generate_ids <- function(df, ...) {
+generate_ids <- function(df, ..., .by = NULL) {
   # function to generate id based on variables.
 
 
@@ -236,12 +236,24 @@ generate_ids <- function(df, ...) {
  # box::use(tibble[...])
   box::use(rlang[...])
 
+
+
+  # Capture the dots
+  dots <- enquos(...)
+  
+  # Remove .by from dots if someone passed it there (though if you have .by in the signature, most people shouldn't)
+  vars <- dots[names(dots) != ".by"]
+  
+  # Capture the .by argument
+  #by_quo <- enquo(.by)
+  .by = enquo(.by)
+
   
   # we need to capture the variables as quosures
-  vars <- quos(...)
+  #vars <- quos(...)
 
   # initialize the .by variable, which governs nesting
-  .by = NULL
+  #.by = NULL
 
   for (var  in vars ) {
     
