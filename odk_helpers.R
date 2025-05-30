@@ -87,6 +87,17 @@ load_data <- function(
     df
   }
 
+  drop_notes <- function(df, xlsform_survey) {
+    notes <- 
+      xls_form_survey %>%
+      filter(type == "note") %>%
+      pull(name)
+
+    df %>% select(-any_of(notes)) 
+
+
+  }
+
   table_names <-
    c("main",
       form_schema %>%
@@ -106,7 +117,8 @@ load_data <- function(
     set_names(table_names) %>%
     map(~ read_csv(here(data_loc,.x))) %>%
     map( ~ clean_names(.x,group_names)) %>%
-    map(~ label_select_one(.x,labels = labels, vars = select_one))
+    map(~ label_select_one(.x,labels = labels, vars = select_one)) %>%
+    map(~ drop_notes(.x,xlsform_survey))
 
 
 
