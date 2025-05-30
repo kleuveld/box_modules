@@ -285,3 +285,24 @@ generate_ids <- function(df, ..., .by = NULL) {
 }
 
 
+summstats <- function(df, vars, 
+                      .fns = list(mean = ~mean(.x,na.rm = TRUE), 
+                                  sd = ~sd(.x, na.rm = TRUE),
+                                  min = ~min(.x, na.rm = TRUE),
+                                  max = ~max(.x, na.rm = TRUE))) {
+
+  # function to generate dataframe with sumstats
+
+  box::use(r/core[...]) 
+  box::use(dplyr[...])
+  box::use(tidyr[...])
+
+  # we want to preserve grouping vars
+  group_vars <- group_vars(df)
+
+  df %>%
+    summarize(across({{ vars }},.fns = .fns)) %>%
+    pivot_longer(cols = -all_of(group_vars),
+                 names_to = c("var",".value" ),
+                 names_pattern = "^(.*)_(.+)$")
+}
