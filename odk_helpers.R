@@ -192,27 +192,104 @@ merge_subtables <- function(.data,table = "main", form_schema = ruODK::form_sche
 
 
 
-get_group_duration <- function(audit_log,group, winsorize = FALSE) {
+get_group_duration <- function(audit_log,group, winsorize = FALSE, kobo = FALSE) {
 
   box::use(r/core[...])  
   box::use(dplyr[...])
   box::use(stringr[str_detect, str_extract])
 
-  audit_log %>%
-    #select(`instance ID`, node, start, end) %>%
-    filter(str_detect(node, group)) %>%
-    filter(event %in% c("question","group questions")) %>%
-    mutate(duration = (end - start) / (1000 * 60)) %>% 
-    {
-      if (winsorize) {
-        box::use(./utils)
-        {.} %>% 
-          mutate(name = str_extract(node, "[^/]+$")) %>%
-          mutate(duration = utils$winsorize(duration),.by = name)
-      } else {
-        {.}
+  # kobo works a bit different than ODK; for now it just has a flag, but
+  # I guess we can clean this up or automatically detect if we're using kobo
+  # or ruODK
 
-      }
-    } %>%
-    summarize(group = group, duration = sum(duration,na.rm = TRUE), .by = `instance ID`)  
+  if (!kobo){
+    return <-
+      audit_log %>%
+      filter(str_detect(node, group)) %>%
+      filter(event %in% c("question","group questions")) %>%
+      mutate(duration = (end - start) / (1000 * 60)) %>% 
+      {
+        if (winsorize) {
+          box::use(./utils)
+          {.} %>% 
+            mutate(name = str_extract(node, "[^/]+$")) %>%
+            mutate(duration = utils$winsorize(duration),.by = name)
+        } else {
+          {.}
+
+        }
+      } %>%
+      summarize(group = group, duration = sum(duration,na.rm = TRUE), .by = `instance ID`) 
+  } else {
+    return <-
+      audit_log %>%
+      filter(str_detect(node, group)) %>%
+      filter(event %in% c("question","group questions")) %>%
+      mutate(duration = as.numeric((end - start),"mins")) %>%
+      {
+        if (winsorize) {
+          box::use(./utils)
+          {.} %>% 
+            mutate(name = str_extract(node, "[^/]+$")) %>%
+            mutate(duration = utils$winsorize(duration),.by = name)
+        } else {
+          {.}
+
+        }
+      } %>%
+      summarize(group = group, duration = sum(duration,na.rm = TRUE), .by = "_id") 
+  } 
+  return
+}
+
+
+
+separate_labelled <- function(df, var, choices, labelset, labels = NULL, prefix = NULL) {
+
+
+  box::use(r/core[...])  
+  box::use(rlang[...])  
+
+  box::use(dplyr[...])
+  box::use(stringr[str_detect])
+  box::use(purrr[...])
+
+
+  choiceset <-
+    choices %>% 
+    filter(`list name` == labelset)
+
+  create_var <- function(value){
+  
+  if (!quo_is_null(enquo(labels))) {
+    value_label <-
+      choiceset %>%
+      filter(as.character(name) == as.character(value)) %>%
+      pull({{ labels }})
+  } else {
+    value_label <- value
+  }
+
+  if (is.null(prefix)) {
+    new_var_name <- paste0(as_label(enquo(var)), "_", value_label)
+  } else {
+    new_var_name <- paste0(prefix, value_label)
+
+  }
+  
+  df %>%
+    select({{var}}) %>%
+    mutate(
+      !!sym(new_var_name) := 1 * str_detect( {{ var }}, paste0("(^| )", value, "( |$)"))
+    ) %>%
+    select( - {{ var }})
+  } 
+
+  bind_cols(
+    df,
+    choiceset %>%
+      pull(name) %>%
+      map( ~create_var(.x))
+  )
+
 }
