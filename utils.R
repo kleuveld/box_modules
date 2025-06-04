@@ -296,12 +296,19 @@ summstats <- function(df, vars,
   box::use(r/core[...]) 
   box::use(dplyr[...])
   box::use(tidyr[...])
+  box::use(rlang[...])
+  box::use(tidyselect[...])
 
   # we want to preserve grouping vars
   group_vars <- group_vars(df)
 
+  vars <- enquo(vars)
+
   df %>%
-    summarize(across({{ vars }},.fns = .fns)) %>%
+    summarize(across(
+      #{{ vars }},
+      eval_select(quo_get_expr(vars), df) %>% names(),  
+      .fns = .fns)) %>%
     pivot_longer(cols = -all_of(group_vars),
                  names_to = c("var",".value" ),
                  names_pattern = "^(.*)_(.+)$")
