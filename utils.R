@@ -233,3 +233,90 @@ find_var <- function(df, string) {
   names(df)[df |> names() |> str_detect(string)]
 }
 
+
+generate_ids <- function(df, ..., .by = NULL) {
+  # function to generate id based on variables.
+
+
+  box::use(r/core[...]) 
+  box::use(dplyr[...])
+  box::use(rlang[...])
+
+  # Capture the dots
+  dots <- enquos(...)
+  
+  # Remove .by from dots
+  vars <- dots[names(dots) != ".by"]
+  
+  # Capture the .by argument
+  #by_quo <- enquo(.by)
+  .by = enquo(.by)
+
+
+  for (var  in vars ) {
+    
+    # create a name for the new ID varaible, from the variable quosure
+    .level_id <- new_quosure(parse_expr(paste0(as_name(as_label(var)),"_id")))
+
+
+    levels <- 
+      df %>% 
+      distinct( {{.by }}, {{ var }} ) %>%
+      {
+        enquo(.by)
+        # if by is null...
+        if (quo_is_null(enquo(.by))) {
+          # just the rownumber
+          {.} %>%
+          mutate( {{ .level_id }}:= paste0(row_number()))
+        } else {
+          # .. else the previous id, with the rownumber appended.
+          {.} %>% 
+          mutate( {{ .level_id }} := paste0({{.by}}, "-",row_number()),.by = {{.by}})
+        }
+      }
+
+    # merge in the leves, suppressing the annoying join by message
+    suppressMessages(
+      df <-
+        df %>% 
+        left_join(levels) %>%
+        relocate({{ .level_id }}, .before = {{ var }})
+    )
+
+    # update the by for the next iteration
+    .by <- .level_id
+
+  }
+  df
+}
+
+
+summstats <- function(df, vars, 
+                      .fns = list(mean = ~mean(.x,na.rm = TRUE), 
+                                  sd = ~sd(.x, na.rm = TRUE),
+                                  min = ~min(.x, na.rm = TRUE),
+                                  max = ~max(.x, na.rm = TRUE))) {
+
+  # function to generate dataframe with sumstats
+
+  box::use(r/core[...]) 
+  box::use(dplyr[...])
+  box::use(tidyr[...])
+  box::use(rlang[...])
+  box::use(tidyselect[...])
+
+  # we want to preserve grouping vars
+  group_vars <- group_vars(df)
+
+  vars <- enquo(vars)
+
+  df %>%
+    summarize(across(
+      #{{ vars }},
+      eval_select(quo_get_expr(vars), df) %>% names(),  
+      .fns = .fns)) %>%
+    pivot_longer(cols = -all_of(group_vars),
+                 names_to = c("var",".value" ),
+                 names_pattern = "^(.*)_(.+)$")
+}
