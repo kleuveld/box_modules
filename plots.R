@@ -73,6 +73,7 @@ stacked_bar_plot_wur <- function(df, fill, by, textsize = 20,
                                  legendposition = "bottom",
                                  legendrows = 2,
                                  labs = NULL, 
+                                 count_size = 2,
                                  count_color = .generate_colors({{df}},{{fill}},{{by}})) {
 
   # This function creates a stacked bar chart in WUR house style
@@ -111,7 +112,8 @@ stacked_bar_plot_wur <- function(df, fill, by, textsize = 20,
      geom_text(stat = "count", 
                aes(label = after_stat(count)), 
                position = position_fill(vjust = 0.5, reverse = TRUE),
-               color = count_color 
+               color = count_color ,
+               size = count_size, family = "Verdana"
                
      ) +
      scale_color_identity() +
