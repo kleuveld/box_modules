@@ -224,3 +224,12 @@ conditional_format <- function(x, .cols,
 
   x
 }
+
+
+find_var <- function(df, string) {
+  box::use(r/core[...]) 
+  box::use(stringr[str_detect])
+
+  names(df)[df |> names() |> str_detect(string)]
+}
+
