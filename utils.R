@@ -286,10 +286,14 @@ generate_ids <- function(df, ..., .by = NULL) {
 
 
 summstats <- function(df, vars, 
-                      .fns = list(mean = ~mean(.x,na.rm = TRUE), 
-                                  sd = ~sd(.x, na.rm = TRUE),
-                                  min = ~min(.x, na.rm = TRUE),
-                                  max = ~max(.x, na.rm = TRUE))) {
+                      .fns =  list(
+                        n = ~sum(!is.na(.x)),
+                        min = ~min(.x, na.rm = TRUE),
+                        p5 = ~quantile(.x, 0.05, na.rm = TRUE),
+                        median = ~median(.x, na.rm = TRUE),
+                        p95 = ~quantile(.x, 0.95, na.rm = TRUE),
+                        max = ~max(.x, na.rm = TRUE)
+                      )) {
 
   # function to generate dataframe with sumstats
 
