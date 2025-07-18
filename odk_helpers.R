@@ -47,7 +47,7 @@ load_data <- function(
     pull(list_name, name = list_name) %>% 
     map( ~ xls_form_choices %>%
            filter(list_name == .x ) %>%
-           with(list(name = name, label = `label::English (en)`)))
+           with(list(name = name, label = `label_report`)))
 
 
 
@@ -269,7 +269,7 @@ separate_labelled <- function(df, var, choices, labelset, labels = NULL, prefix 
 
   choiceset <-
     choices %>% 
-    filter(`list name` == labelset)
+    filter(`list_name` == labelset)
 
   create_var <- function(value){
   
