@@ -461,3 +461,14 @@ summstats <- function(df, vars,
                  names_to = c("var",".value" ),
                  names_pattern = "^(.*)_(.+)$")
 }
+
+# a function to replace specific values, based on a condition
+# that works well in mutate
+# and works well with NAs (unlike using if_else)
+replace <- function(x, value, condition) {
+
+  box::use(r/core[...]) 
+
+  x[condition] <- value
+  x
+}
