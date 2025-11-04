@@ -13,10 +13,6 @@ load_data <- function(
   box::use(here[...])
   box::use(janitor[...])
 
-
-  # Fetch form schema
-  #form_schema <- ruODK::form_schema()
-
   # get all the group names from the schema, so we can remove them from varnames
   group_names <- 
    form_schema %>%
@@ -38,7 +34,8 @@ load_data <- function(
   # label definition
   xls_form_choices <- 
     read_excel(xlsform,
-               sheet = "choices") %>% 
+               sheet = "choices",
+               guess_max = 5000) %>% 
     filter(!is.na(list_name)) 
 
   labels <-  
@@ -106,11 +103,14 @@ load_data <- function(
 
 
   file_names <- 
+      if(length(table_names) == 1) {
+        paste0(form_id,".csv")
+      } else {
       paste0(c(form_id,
                paste(form_id,
                      table_names[2:length(table_names)],sep ="-")),
             ".csv")
-
+      }
 
   all_data <-
   file_names %>%
