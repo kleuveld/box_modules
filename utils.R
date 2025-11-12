@@ -234,6 +234,150 @@ find_var <- function(df, string) {
 }
 
 
+group_differences <- function(df, outcomes, group = NULL, labels = NULL, treatment, clusters = NULL, weights = NULL, controls = NULL, footer = NULL) {
+  
+  box::use(r/core[...]) 
+  box::use(dplyr[...])
+  box::use(tibble[...])
+  box::use(flextable[...])
+  box::use(estimatr[...])
+  box::use(rlang[...])
+  box::use(purrr[...])
+  
+  
+  # tabulator messes up the order; this is to fix that
+  order <-
+    tibble(Indicator = outcomes) %>%
+    mutate(order = row_number())
+  
+  # se the label for the diff column based on a group being supplied
+  if (is.null(group)) {
+    difflabel <- "Difference\n(SE)"
+  } else {
+    difflabel <- "Double diff.\n(SE)" 
+  }
+  
+  # get the data for the colum with differences
+  estimates <-
+    outcomes %>%
+    map(~{ 
+      
+      # define the arguments for lm_robust
+      args <- list2(
+        data = df
+      )
+      
+      if (is.null(group)) {
+        args$formula <- 
+          reformulate(c(treatment, controls), response = as.name(.x))
+      } else {
+        args$formula <- 
+          reformulate(c(paste0(treatment, " * ", group),controls), response = as.name(.x))
+      }
+      # add optional arguments
+      if (!is.null(clusters)) {
+        args$clusters <- df[[clusters]]
+      }
+      
+      if (!is.null(weights)) {
+        args$weights <- df[[weights]]
+      }
+      
+      # run lm_robust with the provided args, and filter to what we need.
+      exec(lm_robust, !!!args) %>%
+        broom::tidy() %>%
+        {
+          if (is.null(group)) { 
+            {.} %>% filter(grepl(paste0("^",treatment),term)) 
+          } else {
+            {.} %>%  filter(grepl(":",term)) 
+          }
+        } %>%
+        select(estimate,std.error,p.value) %>%
+        mutate(Indicator = .x)
+    }) %>%
+    bind_rows() %>%
+    
+    # combine point estimate w/ p-value
+    mutate(stars = case_when(p.value < 0.001 ~ "***",
+                             p.value < 0.01 ~ "**",
+                             p.value < 0.05 ~ "*",
+                             p.value < 0.1 ~ "*",
+                             .default = "" ),
+           Diff = paste0(round(estimate,2),stars,"\n(",round(std.error,2),")")) %>%
+    #select(Indicator, "{difflabel}" := Diff , `Std. Error` = std.error)
+    select(Indicator, "{difflabel}" := Diff)
+  
+  
+  # get a data frame with summmary statistcs
+  summstats <-
+    outcomes %>%
+    map(~ df %>%
+          group_by(treatment,pick(group)) %>%
+          summarize(Indicator = .x,
+                    across(matches(paste0("^",.x,"$")),
+                           list(n = ~sum(!is.na(.x)),
+                                mean = ~mean(.x,na.rm = TRUE),
+                                sd = ~sd(.x,na.rm=TRUE)
+                                #mean = ~ weighted.mean(.x, w = weights, na.rm = TRUE),
+                                #sd = ~ weighted_sd(.x, w = weights)
+                           ),
+                           .names = "{.fn}"))) %>%
+    bind_rows()
+  
+  # combine the two in a flextable using tabulator
+  summstats %>%
+    tabulator(rows = "Indicator",
+              columns = c(group,"treatment"),
+              datasup_last = estimates,
+              hidden_data = order,
+              `N` = as_paragraph(as_chunk(n,digits=0)),
+              #`Mean (SD)` =  as_paragraph(as_chunk(fmt_avg_dev(mean,
+              #                  sd, digit1=2, digit2 = 2)))) %>%
+              `Mean\n(SD)` =  as_paragraph(as_chunk(mean,digits=2),"\n(",as_chunk(sd,digits=2),")")) %>%
+    
+    # sort the data element of the tabulator object
+    {
+      tab <- .
+      tab$data <-
+        tab$data %>%
+        arrange(order)
+      tab
+    } %>%
+    as_flextable() %>%
+    
+    # format the flextable, so it fits an A4 page in a word document
+    colformat_double(digits= 2) %>%
+    {
+      if (is.null(labels)) {
+        {.}
+      } else {
+        
+        {.} %>% labelizor(j =1,labels = labels, part = "all") 
+      }  
+    } %>%
+    fontsize(size = 8 ,part = "all") %>%
+    padding(padding.left = 0, padding.right = 0, part = "all") %>%
+    align(j = -1, align = "center", part = "body") %>%
+    align(j = -1, align = "center", part = "header") %>%
+    
+    autofit() %>%
+    
+    # add footer; goes after autofit, otherwise the table remains wide!
+    add_footer_lines(paste0("Significance levels: + = 0.1, * = 0.05, ** = 0.01, *** = 0.001; ",
+                            footer)) %>%
+    italic(part = "footer") %>%
+    fontsize(size = 6 ,part = "footer") %>%
+    align(align = "left", part = "footer") %>%
+    
+    keep_with_next(part = "all")
+  
+}
+
+
+
+
+
 generate_ids <- function(df, ..., .by = NULL) {
   # function to generate id based on variables.
 
@@ -293,10 +437,14 @@ generate_ids <- function(df, ..., .by = NULL) {
 
 
 summstats <- function(df, vars, 
-                      .fns = list(mean = ~mean(.x,na.rm = TRUE), 
-                                  sd = ~sd(.x, na.rm = TRUE),
-                                  min = ~min(.x, na.rm = TRUE),
-                                  max = ~max(.x, na.rm = TRUE))) {
+                      .fns =  list(
+                        n = ~sum(!is.na(.x)),
+                        min = ~min(.x, na.rm = TRUE),
+                        p5 = ~quantile(.x, 0.05, na.rm = TRUE),
+                        median = ~median(.x, na.rm = TRUE),
+                        p95 = ~quantile(.x, 0.95, na.rm = TRUE),
+                        max = ~max(.x, na.rm = TRUE)
+                      )) {
 
   # function to generate dataframe with sumstats
 
@@ -319,4 +467,15 @@ summstats <- function(df, vars,
     pivot_longer(cols = -all_of(group_vars),
                  names_to = c("var",".value" ),
                  names_pattern = "^(.*)_(.+)$")
+}
+
+# a function to replace specific values, based on a condition
+# that works well in mutate
+# and works well with NAs (unlike using if_else)
+replace <- function(x, value, condition) {
+
+  box::use(r/core[...]) 
+
+  x[condition] <- value
+  x
 }
