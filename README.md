@@ -25,7 +25,7 @@ to load a module, where the relative path starts at the project root.
 For now you'll need to have a look at the actual function to see how to use them.
 Better documentation may be coming.
 
-- utils.R: utility function to manage data. 
+- utils.R: utility functions to manage data. 
    - create_codebook: creates a "codebook"-dataframe containing variable labels and summ stats of data frame.
    - winsorize: winsorize a vector
    - count_label: adds counts to the labels of factors, useful for some plots
@@ -39,6 +39,25 @@ Better documentation may be coming.
    Example use: `bg(ft_2, bg = utils$colourer(domain = c(0,5), palette = c("transparent","red), part = "body")`
    - conditional_format: for colouring flextable columns, based on actual data.
    Example use: `utils$conditional_format(ft_2, .cols = c("var1"."var2"), palette = c("red","transparent","red"))`
+   - find_var: for finding a variable in a data set.
+   Example use: `utils$find_var(df, "hh_")` returns the names of variables containing 
+   `hh_` in dataset `df`.
+   - group_differences: produces a flextable of differences between groups.
+   Example use: `utils$group_differences(df,outcomes = c("yield", "income"), treatment = "treat")`
+   to compute the difference in outcomes between treatment and control. Optionally provide
+   arguments `group` (for heterogeneous effects), `labels` (named vector providing mapping
+   between variable names and labels), `clusters`, `weights`, `controls`, and `footer`.
+   - generate_ids: generate id codes based on ref data. 
+   Example use: `utils$generate_ids(district, community, farmer)` generates nested IDs
+   `district_id` (1, 2, ...), `community_id` (1-1, 1-2, 2-1, ...) and `farmer_id` 
+   (1-1-1,...).
+   - summstats: creates a quick tibble of summstats, respecting groups.
+   `df %>% group_by(group) %>% summstats()` creates a tibble with n, min, p5, median, 
+   p95, and max values. Summary functions can be provided by providing a named list  
+   as the `.fns` argument, e.g. `.fns = list(mean = ~mean(.x, na.rm = true))`
+   - replace: change value conditionally, while handling NAs elegantly. 
+   Example usage: `df %>% mutate(x = utils$replace(x,NA,x == 99))` replaces all instances
+   of `99` in a variable with NA.
 - plots.R: plots:
   - stacked_bar_plot: a stacked bar chart.
   - stacked_bar_plot_wur: the same, but in WUR housestyle. Requires the `[ggthemewur](https://git.wur.nl/wmrkdown/ggthemewur)` package.

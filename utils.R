@@ -472,10 +472,16 @@ summstats <- function(df, vars,
 # a function to replace specific values, based on a condition
 # that works well in mutate
 # and works well with NAs (unlike using if_else)
-replace <- function(x, value, condition) {
+replace <- function(x, value, condition = !is.na(x)) {
 
   box::use(r/core[...]) 
+  x_new <-x
+  x_new[condition] <- value
 
-  x[condition] <- value
-  x
+  # display changes made, making sure to include changes to/from NAW
+  changes <- sum((x != x_new) | (is.na(x) != is.na(x_new)), na.rm = TRUE)
+  message(paste0("Made ", changes, " changes."))
+
+  x_new
 }
+
