@@ -1,6 +1,6 @@
 
 load_data <- function(
-    data_loc,form_id,form_schema = ruODK::form_schema(),xlsform) {
+    data_loc,form_id,form_schema = ruODK::form_schema(),xlsform,suppress_warnings = TRUE) {
 
   box::use(r/core[...])  
   box::use(dplyr[...])
@@ -13,23 +13,99 @@ load_data <- function(
   box::use(here[...])
   box::use(janitor[...])
 
-  # get all the group names from the schema, so we can remove them from varnames
-  group_names <- 
-   form_schema %>%
-   filter(type == "structure") %>%
-   pull(name)
 
-  clean_names <- function(df, group_names) {
+  # function to remove group names from variable names, based on the form schema
+  # nb: this is now integrated in import_csv
+  # clean_names <- function(df, table_name) {
 
-    #remove group names using a regex containing all the group names
-    pattern <- paste(paste0(group_names,"_?"), collapse = "|")
-    colnames(df) <- gsub(pattern, "", colnames(df))
+  #   # we need to filter the schema based on the table name
+  #   # but for the main table we simply take the root
+  #   filter_string <- 
+  #     if (table_name == "main"){
+  #       "/" 
+  #     } else {
+  #       paste0("/",table_name,"/")
+  #     }
 
-    # make sure colnames are unique
-    colnames(df) <- make_clean_names(colnames(df), unique_sep = "_")
-    
-    return(df)
+  #   # create a named vector mapping old names (with all groups in them)
+  #   # to cleaner names
+  #   # for this we use the form schema
+  #   name_map <- 
+  #     form_schema %>% 
+  #     filter(str_detect(path, filter_string)) %>% 
+  #     mutate(path = sub(paste0(".*?", filter_string), "", path)) %>% 
+  #     filter(type != "structure") %>%
+  #     mutate(path = str_replace_all(path,"/","-")) %>%
+  #     mutate(name =  make_clean_names(name)) %>%
+  #     pull(path, name = name)
+
+  #   # apply the map
+  #   df %>%
+  #     rename(any_of(name_map)) %>% 
+  #     # old versions renamed KEY and PARENT_KEY to key and parent_key
+  #     # to preserve compatibility, we do the same here
+  #     rename_with(tolower,any_of(c("KEY","PARENT_KEY")))
+
+  # }
+
+
+  # load csv, making sure to remove group names from variable names and set column types
+  # all this is based on info from the form schema
+  # note that this means that all calculate fields are imported as text.
+  import_csv <- function(data_loc, file_name, table_name) {
+
+  # we need to filter the schema based on the table name
+  # but for the main table we simply take the root
+  filter_string <- 
+    if (table_name == "main"){
+      "/" 
+    } else {
+      paste0("/",table_name,"/")
+    }
+
+  # clean the form schema, so that the path colum contains the variable
+  # names as they are in the CSVs and names are unique
+  form_schema_cleaned <-   
+    form_schema %>% 
+    filter(str_detect(path, filter_string)) %>% 
+    mutate(path = sub(paste0(".*?", filter_string), "", path)) %>% 
+    filter(type != "structure") %>%
+    mutate(path = str_replace_all(path,"/","-")) %>%
+    mutate(name =  make_clean_names(name)) 
+
+
+  # save a named vector for renaming variables
+  name_map <-
+    form_schema_cleaned %>% 
+    pull(path, name = name)
+
+  # save a named vector for setting column types
+  type_map <-
+    form_schema_cleaned %>% 
+    mutate(type= case_when(
+                  type == "binary" ~ "l",
+                  type == "date" ~ "D",
+                  type == "dateTime" ~ "D",
+                  type == "decimal" ~ "d",
+                  type == "geopoint" ~ "c",
+                  type == "int" ~ "i",
+                  TRUE ~ "c")) %>%
+    pull(type, name = path)
+
+  # read csv and apply mappings
+  read_csv(here(data_loc, file_name),
+            col_types = type_map) %>%
+    # the above command will produce a lot of warning for variables that are present
+    # in the type_map, but not in the data. 
+    # since the type_map for 'main' contains all variables this was annoying
+    (\(x) if (suppress_warnings) suppressWarnings(x) else x)() %>% 
+    rename(any_of(name_map)) %>% 
+    # old versions renamed KEY and PARENT_KEY to key and parent_key
+    # to preserve compatibility, we do the same here
+    rename_with(tolower,any_of(c("KEY","PARENT_KEY")))
+
   }
+
 
   # label definition
   xls_form_choices <- 
@@ -39,7 +115,7 @@ load_data <- function(
     filter(!is.na(list_name)) 
 
   labels <-  
-   xls_form_choices %>%
+    xls_form_choices %>%
     distinct(list_name) %>%
     pull(list_name, name = list_name) %>% 
     map( ~ xls_form_choices %>%
@@ -97,33 +173,36 @@ load_data <- function(
 
   table_names <-
    c("main",
-      form_schema %>%
-      filter(type == "repeat") %>%
-      pull(name))
+     form_schema %>%
+     filter(type == "repeat") %>%
+     pull(name)
+    )
 
 
   file_names <- 
-      if(length(table_names) == 1) {
-        paste0(form_id,".csv")
-      } else {
-      paste0(c(form_id,
-               paste(form_id,
-                     table_names[2:length(table_names)],sep ="-")),
-            ".csv")
-      }
+    if(length(table_names) == 1) {
+      paste0(form_id,".csv")
+    } else {
+    paste0(c(form_id,
+              paste(form_id,
+                    table_names[2:length(table_names)],sep ="-")),
+          ".csv")
+    }
 
   all_data <-
   file_names %>%
     set_names(table_names) %>%
-    map(~ read_csv(here(data_loc,.x))) %>%
-    map( ~ clean_names(.x,group_names)) %>%
+    #map(~ read_csv(here(data_loc,.x), guess_max = 1000000)) %>%
+    #imap( ~ clean_names(.x,.y)) %>%
+    imap( ~ import_csv(data_loc,.x,.y)) %>%
     map(~ label_select_one(.x,labels = labels, vars = select_one)) %>%
     map(~ drop_notes(.x,xlsform_survey))
 
 
 
 
-    return(all_data)
+  return(all_data)
+
 }
 
 
