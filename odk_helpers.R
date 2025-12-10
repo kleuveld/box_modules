@@ -1,11 +1,11 @@
 
 load_data <- function(
-    data_loc,form_id,form_schema = ruODK::form_schema(),xlsform,suppress_warnings = TRUE) {
+    data_loc,form_id,form_schema = ruODK::form_schema(),xlsform,suppress_warnings = TRUE, value_labels = NULL) {
 
   box::use(r/core[...])  
   box::use(dplyr[...])
-  box::use(tibble[...])
-  box::use(purrr[...])
+    box::use(tibble[...])
+    box::use(purrr[...])
   box::use(readxl[...])
   box::use(tidyr[...])
   box::use(stringr[...])
@@ -160,6 +160,78 @@ load_data <- function(
     df
   }
 
+
+  
+  # this function generates dummies for select mutliple variables
+  label_select_multiple <- function(df, value_labels = NULL) {
+    
+
+    # load form definition and find out which vars are select_multiple
+    # survey <- read_excel(xlsform_path, sheet = "survey") 
+    #choices <- read_excel(xlsform_path, sheet = "choices")
+
+    vars <- 
+      xls_form_survey %>%
+      filter(str_detect(type, "^select_multiple")) %>% 
+      pull(name) %>%
+      intersect(names(df))
+
+    # then loop over all vars found to generate dummies for each them
+    for (var in vars) {
+      
+      # get the name labelset for this variable
+      labelset <- 
+        xls_form_survey %>%
+        filter(name == var) %>% 
+        mutate(type = str_replace(type, "select_multiple ","")) %>% 
+        pull(type)
+
+      # get the choices
+      choiceset <-
+        xls_form_choices %>%
+        rename(any_of(c("list name" = "list_name"))) %>%
+        filter(`list name` == labelset)
+
+      # this function creates one variable for one value
+      create_var <- function(value){
+      
+        # we can use simply the values, or a user-supplied label to generate var names
+        if (!is.null(value_labels)){
+          value_label <-
+            choiceset %>%
+            filter(as.character(name) == as.character(value)) %>%
+            pull(any_of(value_labels))
+        } else {
+          value_label <- value
+        }
+
+        new_var_name <- paste0(var, "_", value_label)
+      
+        # this is just a dummy variable, 1 if it the value is found in the var
+        tibble("{new_var_name}" := 1 * str_detect( df[[var]], paste0("(^| )", value, "( |$)")))
+
+      } 
+
+      # create variable for each of the choices
+      new_cols <- 
+          choiceset %>%
+          pull(name) %>%
+          map( ~create_var(.x)) %>%
+          bind_cols()
+
+      # we need the names to do the ordering
+      new_names <- names(new_cols)
+      
+      # bind all columns to the dataset, and order them after the original var
+      df <- 
+        bind_cols(
+          df,
+          new_cols
+        ) %>%
+        relocate(all_of(new_names), .after = all_of(var))
+    }
+    df
+  }
   drop_notes <- function(df, xlsform_survey) {
     notes <- 
       xls_form_survey %>%
@@ -196,9 +268,10 @@ load_data <- function(
     #imap( ~ clean_names(.x,.y)) %>%
     imap( ~ import_csv(data_loc,.x,.y)) %>%
     map(~ label_select_one(.x,labels = labels, vars = select_one)) %>%
+    map(~ label_select_multiple(.x, value_labels = value_labels)) %>%
     map(~ drop_notes(.x,xlsform_survey))
 
-
+  
 
 
   return(all_data)
