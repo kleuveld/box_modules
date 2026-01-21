@@ -4,8 +4,8 @@ load_data <- function(
 
   box::use(r/core[...])  
   box::use(dplyr[...])
-    box::use(tibble[...])
-    box::use(purrr[...])
+  box::use(tibble[...])
+  box::use(purrr[...])
   box::use(readxl[...])
   box::use(tidyr[...])
   box::use(stringr[...])
@@ -14,95 +14,60 @@ load_data <- function(
   box::use(janitor[...])
 
 
-  # function to remove group names from variable names, based on the form schema
-  # nb: this is now integrated in import_csv
-  # clean_names <- function(df, table_name) {
-
-  #   # we need to filter the schema based on the table name
-  #   # but for the main table we simply take the root
-  #   filter_string <- 
-  #     if (table_name == "main"){
-  #       "/" 
-  #     } else {
-  #       paste0("/",table_name,"/")
-  #     }
-
-  #   # create a named vector mapping old names (with all groups in them)
-  #   # to cleaner names
-  #   # for this we use the form schema
-  #   name_map <- 
-  #     form_schema %>% 
-  #     filter(str_detect(path, filter_string)) %>% 
-  #     mutate(path = sub(paste0(".*?", filter_string), "", path)) %>% 
-  #     filter(type != "structure") %>%
-  #     mutate(path = str_replace_all(path,"/","-")) %>%
-  #     mutate(name =  make_clean_names(name)) %>%
-  #     pull(path, name = name)
-
-  #   # apply the map
-  #   df %>%
-  #     rename(any_of(name_map)) %>% 
-  #     # old versions renamed KEY and PARENT_KEY to key and parent_key
-  #     # to preserve compatibility, we do the same here
-  #     rename_with(tolower,any_of(c("KEY","PARENT_KEY")))
-
-  # }
-
-
   # load csv, making sure to remove group names from variable names and set column types
   # all this is based on info from the form schema
   # note that this means that all calculate fields are imported as text.
   import_csv <- function(data_loc, file_name, table_name) {
 
-  # we need to filter the schema based on the table name
-  # but for the main table we simply take the root
-  filter_string <- 
-    if (table_name == "main"){
-      "/" 
-    } else {
-      paste0("/",table_name,"/")
-    }
+    # we need to filter the schema based on the table name
+    # but for the main table we simply take the root
+    filter_string <- 
+      if (table_name == "main"){
+        "/" 
+      } else {
+        paste0("/",table_name,"/")
+      }
 
-  # clean the form schema, so that the path colum contains the variable
-  # names as they are in the CSVs and names are unique
-  form_schema_cleaned <-   
-    form_schema %>% 
-    filter(str_detect(path, filter_string)) %>% 
-    mutate(path = sub(paste0(".*?", filter_string), "", path)) %>% 
-    filter(type != "structure") %>%
-    mutate(path = str_replace_all(path,"/","-")) %>%
-    mutate(name =  make_clean_names(name)) 
+    # clean the form schema, so that the path colum contains the variable
+    # names as they are in the CSVs and names are unique
+    form_schema_cleaned <-   
+      form_schema %>% 
+      filter(str_detect(path, filter_string)) %>% 
+      mutate(path = sub(paste0(".*?", filter_string), "", path)) %>% 
+      filter(type != "structure") %>%
+      mutate(path = str_replace_all(path,"/","-")) %>%
+      mutate(name =  make_clean_names(name)) 
 
 
-  # save a named vector for renaming variables
-  name_map <-
-    form_schema_cleaned %>% 
-    pull(path, name = name)
+    # save a named vector for renaming variables
+    name_map <-
+      form_schema_cleaned %>% 
+      pull(path, name = name)
 
-  # save a named vector for setting column types
-  type_map <-
-    form_schema_cleaned %>% 
-    mutate(type= case_when(
-                  type == "binary" ~ "l",
-                  type == "date" ~ "D",
-                  type == "dateTime" ~ "D",
-                  type == "decimal" ~ "d",
-                  type == "geopoint" ~ "c",
-                  type == "int" ~ "i",
-                  TRUE ~ "c")) %>%
-    pull(type, name = path)
+    # save a named vector for setting column types
+    type_map <-
+      form_schema_cleaned %>% 
+      mutate(type= case_when(
+                    type == "binary" ~ "l",
+                    type == "date" ~ "D",
+                    type == "dateTime" ~ "D",
+                    type == "decimal" ~ "d",
+                    type == "geopoint" ~ "c",
+                    type == "int" ~ "i",
+                    TRUE ~ "c")) %>%
+      pull(type, name = path)
 
-  # read csv and apply mappings
-  read_csv(here(data_loc, file_name),
-            col_types = type_map) %>%
-    # the above command will produce a lot of warning for variables that are present
-    # in the type_map, but not in the data. 
-    # since the type_map for 'main' contains all variables this was annoying
-    (\(x) if (suppress_warnings) suppressWarnings(x) else x)() %>% 
-    rename(any_of(name_map)) %>% 
-    # old versions renamed KEY and PARENT_KEY to key and parent_key
-    # to preserve compatibility, we do the same here
-    rename_with(tolower,any_of(c("KEY","PARENT_KEY")))
+    # read csv and apply mappings
+    read_csv(here(data_loc, file_name),
+              col_types = type_map) %>%
+      # the above command will produce a lot of warning for variables that are present
+      # in the type_map, but not in the data. 
+      # since the type_map for 'main' contains all variables this was annoying
+      (\(x) if (suppress_warnings) suppressWarnings(x) else x)() %>% 
+      rename(any_of(name_map)) %>% 
+      # old versions renamed KEY and PARENT_KEY to key and parent_key
+      # to preserve compatibility, we do the same here
+      rename_with(tolower,any_of(c("KEY","PARENT_KEY")))
 
   }
 
@@ -164,7 +129,6 @@ load_data <- function(
   
   # this function generates dummies for select mutliple variables
   label_select_multiple <- function(df, value_labels = NULL) {
-    
 
     # load form definition and find out which vars are select_multiple
     # survey <- read_excel(xlsform_path, sheet = "survey") 
@@ -267,7 +231,7 @@ load_data <- function(
     #map(~ read_csv(here(data_loc,.x), guess_max = 1000000)) %>%
     #imap( ~ clean_names(.x,.y)) %>%
     imap( ~ import_csv(data_loc,.x,.y)) %>%
-    map(~ label_select_one(.x,labels = labels, vars = select_one)) %>%
+    map(~ label_select_one(.x, labels = labels, vars = select_one)) %>%
     map(~ label_select_multiple(.x, value_labels = value_labels)) %>%
     map(~ drop_notes(.x,xlsform_survey))
 
